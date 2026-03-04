@@ -1,7 +1,7 @@
 {
   "author": "xixu-me",
   "dependencies": {
-    "hono": "^4.10.3"
+    "hono": "^4.12.4"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250722.0",
@@ -9,7 +9,7 @@
     "jest": "^29.7.0",
     "ts-jest": "^29.1.2",
     "typescript": "^5.5.2",
-    "wrangler": "^4.25.0"
+    "wrangler": "^4.59.1"
   },
   "engines": {
     "node": ">=18.0.0"
