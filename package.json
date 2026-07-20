@@ -4,13 +4,13 @@
     "hono": "^4.12.30"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^5.20260712.1",
+    "@cloudflare/workers-types": "^5.20260719.1",
     "@types/jest": "^30.0.0",
     "@types/node": "^26.1.1",
     "jest": "^30.4.2",
     "ts-jest": "^29.4.11",
     "typescript": "^5.9.3",
-    "wrangler": "^4.110.0"
+    "wrangler": "^4.112.0"
   },
   "engines": {
     "node": ">=18.0.0"
