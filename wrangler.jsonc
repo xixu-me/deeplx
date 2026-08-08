@@ -1,50 +1,61 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "account_id": "07c56e0dc4b3b1597495aa78fe7ebbf8",
+  "name": "translate",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-07-19",
+  /**
+   * Our own account, not the upstream author's. A `git pull` that reintroduces
+   * their account_id is why this file is worth reading after every merge.
+   */
+  "account_id": "cd1e88db5a44de0f45317275cbcef879",
+  "observability": {
+    "enabled": true
+  },
+  /**
+   * A custom domain rather than workers.dev: the whole point of this instance is
+   * a translation endpoint we control and can hand a key to.
+   */
+  "routes": [
+    {
+      "pattern": "translate.jonas-strassel.de",
+      "custom_domain": true
+    }
+  ],
+  /**
+   * Not reachable without a key. Upstream ships no auth at all — it advertises
+   * that as a feature — which is wrong for a host we own: an open proxy here is
+   * someone else's free API, and their volume is what gets our IP blocked
+   * upstream. That block is the reason this instance exists.
+   *
+   *   npx wrangler secret put API_KEYS
+   *
+   * Comma-separated, so a single client can be revoked without rotating the
+   * rest. Unset means the worker refuses everything; see src/lib/apiKey.ts.
+   */
+  "kv_namespaces": [
+    {
+      "binding": "CACHE_KV",
+      "id": "ba491fed823141778ecd60b55861e0e8"
+    },
+    {
+      "binding": "RATE_LIMIT_KV",
+      "id": "2505ece6a81841acb61acb9c2c19223e"
+    }
+  ],
   "analytics_engine_datasets": [
     {
       "binding": "ANALYTICS"
     }
   ],
-  "compatibility_date": "2025-07-19",
-  "kv_namespaces": [
-    {
-      "binding": "CACHE_KV",
-      "id": "4d5895d8716247f486493b93edbc5fe9",
-      "preview_id": "e9e499fe006e4879a0668e792fe2dd15"
-    },
-    {
-      "binding": "RATE_LIMIT_KV",
-      "id": "07147ca64a4c48fe952f62afe469bb44",
-      "preview_id": "bbed039364e5488e8ed58701c3ee5da5"
-    }
-  ],
-  "main": "src/index.ts",
-  "name": "deeplx",
-  "observability": {
-    "enabled": false,
-    "head_sampling_rate": 1,
-    "logs": {
-      "enabled": true,
-      "head_sampling_rate": 1,
-      "invocation_logs": true,
-      "persist": true
-    },
-    "traces": {
-      "enabled": true,
-      "head_sampling_rate": 1,
-      "persist": true
-    }
-  },
   "placement": {
     "mode": "smart"
   },
+  /** Upstream's five-minute cron only clears the in-memory cache. */
   "triggers": {
     "crons": ["*/5 * * * *"]
   },
   "vars": {
-    "DEBUG_MODE": "false",
-    "PROXY_URLS": "https://0.xdpl.xixu.dpdns.org/jsonrpc,https://1.xdpl.xixu.dpdns.org/jsonrpc,https://2.xdpl.xixu.dpdns.org/jsonrpc,https://3.xdpl.xixu.dpdns.org/jsonrpc,https://4.xdpl.xixu.dpdns.org/jsonrpc,https://5.xdpl.xixu.dpdns.org/jsonrpc,https://6.xdpl.xixu.dpdns.org/jsonrpc,https://7.xdpl.xixu.dpdns.org/jsonrpc,https://8.xdpl.xixu.dpdns.org/jsonrpc,https://9.xdpl.xixu.dpdns.org/jsonrpc"
+    "DEBUG_MODE": "false"
   },
   "workers_dev": false
 }

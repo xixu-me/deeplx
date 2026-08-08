@@ -11,6 +11,7 @@ import {
   setCachedTranslation,
 } from "./lib";
 
+import { rejectUnauthorized } from "./lib/apiKey";
 import { PAYLOAD_LIMITS } from "./lib/config";
 import { createErrorResponse } from "./lib/errorHandler";
 import { normalizeLanguageCode } from "./lib/query";
@@ -80,6 +81,11 @@ export default worker;
  * @returns Translation response
  */
 async function handleTranslation(c: any, provider: "deepl" | "google") {
+  // Checked here rather than per route: every provider endpoint funnels through
+  // this function, so an upstream route added later is gated automatically.
+  const unauthorized = rejectUnauthorized(c);
+  if (unauthorized) return unauthorized;
+
   const env = c.env;
   const clientIP = getSecureClientIP(c.req.raw) || "unknown";
 
@@ -229,6 +235,9 @@ app
     if (!isDebugModeEnabled(c.env.DEBUG_MODE)) {
       return c.json(createStandardResponse(404, null), 404);
     }
+
+    const unauthorized = rejectUnauthorized(c);
+    if (unauthorized) return unauthorized;
 
     const env = c.env;
     const clientIP = getSecureClientIP(c.req.raw) || "unknown";

@@ -20,6 +20,13 @@ interface Env {
 
   /** Enables the /debug endpoint only when set to an explicit truthy value */
   DEBUG_MODE?: string;
+
+  /**
+   * Comma-separated accepted API keys, set as a secret. Local addition to the
+   * fork: upstream ships no auth. Unset means the service refuses every
+   * request rather than serving an open proxy; see lib/apiKey.ts.
+   */
+  API_KEYS?: string;
 }
 
 /**
