@@ -10,7 +10,7 @@ module.exports = {
         tsconfig: {
           target: "ES2020",
           module: "commonjs",
-          lib: ["ES2020", "WebWorker"],
+          lib: ["ES2020", "ES2024.Promise", "WebWorker"],
           types: ["@cloudflare/workers-types", "jest", "node"],
         },
       },

@@ -12,6 +12,7 @@ export * from "./errorHandler";
 export * from "./proxyManager";
 export * from "./rateLimit";
 export * from "./retryLogic";
+export * from "./services/deeplWrite";
 export * from "./textUtils";
 export * from "./types";
 

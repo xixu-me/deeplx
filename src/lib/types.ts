@@ -3,6 +3,8 @@
  * Provides comprehensive type safety for API operations and data structures
  */
 
+import { REPHRASE_TARGET_LANGS } from "./const";
+
 /**
  * Source language type (includes auto-detection)
  */
@@ -37,6 +39,21 @@ export type RequestParams = {
   text: string;
   source_lang: SourceLang;
   target_lang: TargetLang;
+};
+
+/**
+ * Target language accepted by the rephrase endpoint
+ */
+export type RephraseTargetLang = (typeof REPHRASE_TARGET_LANGS)[number];
+
+/**
+ * Request parameters for rephrase operations
+ *
+ * No source language: DeepL Write detects it.
+ */
+export type RephraseParams = {
+  text: string;
+  target_lang?: RephraseTargetLang;
 };
 
 /**

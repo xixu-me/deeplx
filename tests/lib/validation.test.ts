@@ -2,7 +2,10 @@
  * Tests for validation functionality
  */
 
-import { validateTranslationRequest } from "../../src/lib/validation";
+import {
+  validateRephraseRequest,
+  validateTranslationRequest,
+} from "../../src/lib/validation";
 
 describe("Validation Module", () => {
   describe("validateTranslationRequest", () => {
@@ -168,6 +171,63 @@ describe("Validation Module", () => {
 
       expect(result.isValid).toBe(true);
       expect(result.sanitizedInput?.source_lang).toBe("auto");
+    });
+  });
+
+  describe("validateRephraseRequest", () => {
+    it("should validate a correct rephrase request", () => {
+      const result = validateRephraseRequest({
+        text: "this are a test",
+        target_lang: "en-US",
+      });
+
+      expect(result.isValid).toBe(true);
+      expect(result.sanitizedInput).toEqual({
+        text: "this are a test",
+        target_lang: "en-US",
+      });
+    });
+
+    it("should accept a request with only text", () => {
+      const result = validateRephraseRequest({ text: "improve me" });
+
+      expect(result.isValid).toBe(true);
+      expect(result.sanitizedInput).toEqual({ text: "improve me" });
+    });
+
+    it("should reject a target language the backend does not support", () => {
+      // Write covers far fewer languages than translation does.
+      const result = validateRephraseRequest({
+        text: "improve me",
+        target_lang: "nl",
+      });
+
+      expect(result.isValid).toBe(false);
+      expect(result.sanitizedInput).toBeUndefined();
+    });
+
+    it("should canonicalize target language casing", () => {
+      const result = validateRephraseRequest({
+        text: "improve me",
+        target_lang: "EN-us",
+      });
+
+      expect(result.isValid).toBe(true);
+      expect(result.sanitizedInput.target_lang).toBe("en-US");
+    });
+
+    it("should require text", () => {
+      const result = validateRephraseRequest({ target_lang: "de" });
+
+      expect(result.isValid).toBe(false);
+      expect(result.errors).toContain("Text field is required");
+    });
+
+    it("should reject empty text", () => {
+      const result = validateRephraseRequest({ text: "   " });
+
+      expect(result.isValid).toBe(false);
+      expect(result.errors).toContain("Text field cannot be empty");
     });
   });
 });

@@ -22,7 +22,9 @@ Deliberately small, so upstream can be merged without re-reading everything:
 | File | Change |
 |---|---|
 | `src/lib/apiKey.ts` | **New.** Bearer / `X-API-Key` gate, constant-time compare, fails closed |
-| `src/index.ts` | Two call sites: `handleTranslation` and `/debug` |
+| `src/lib/services/deeplWrite.ts` | **New.** DeepL Write (`/rephrase`) over the free session backend |
+| `src/lib/services/deeplWriteProtocol.ts` | **New.** Protobuf + SignalR wire format for the above |
+| `src/index.ts` | Three call sites: `handleTranslation`, `handleRephrase` and `/debug` |
 | `worker-configuration.d.ts` | `API_KEYS` binding |
 | `wrangler.jsonc` | Our account, our KV namespaces, our custom domain, no `PROXY_URLS` |
 
@@ -58,17 +60,54 @@ curl -X POST https://translate.jonas-strassel.de/translate \
 `POST /translate` and `/deepl` use DeepL, `/google` uses Google Translate.
 Responses are `{ code, data, id, source_lang, target_lang }`.
 
-Expected status codes: `401` no key, `403` wrong key, `503` server has no keys
-configured, `200` with `data`.
+## Rephrase
 
-## Clients
+`POST /rephrase` improves text instead of translating it (DeepL Write).
 
-- The `deeplx` MCP server reads `DEEPLX_URL` and `DEEPLX_KEY`.
-- wanderbar's `scripts/review-translations.mjs` defaults to this endpoint and
-  takes the key from `DEEPLX_KEY`.
+```sh
+curl -X POST https://translate.jonas-strassel.de/rephrase \
+  -H 'content-type: application/json' \
+  -H "Authorization: Bearer $DEEPLX_KEY" \
+  -d '{"text":"she dont like the way he write emails","target_lang":"en-GB"}'
+```
 
-## Caveats
+```json
+{"code":200,"data":"She doesn't like the way he writes emails.","source_lang":"AUTO","target_lang":"EN-GB"}
+```
 
-Upstream's own disclaimer applies: it drives DeepL's free web endpoint rather
-than the paid API, so **confirm DeepL's terms before any commercial use**, and
-do not send confidential text through it. There is no availability guarantee.
+| Field | |
+|---|---|
+| `text` | required |
+| `target_lang` | optional, defaults to `en-GB`. Only `de en-GB en-US es fr it ja ko pt-BR pt-PT zh-Hans` |
+
+### How it works, and why that matters
+
+There is a documented `api.deepl.com/v2/write/rephrase`, but it is **Pro-only**
+and needs an API key. This endpoint does not use it. It uses the same free
+backend as deepl.com/write, which is a different protocol entirely:
+
+1. `POST https://ita-free.www.deepl.com/v2/startSession` with a protobuf body
+   (`SESSION_MODE_WRITE`), which returns a session id and a WebSocket path.
+2. Upgrade to that socket and complete a SignalR handshake declaring the
+   **MessagePack** hub protocol.
+3. Send an `AppendRequest` carrying the text plus two `SetPropertyOperation`s
+   and a `baseVersion` echoed from the server's own frames.
+4. Read the rewrite off the `FieldEvent` for the **target** field.
+
+**None of this is a published contract.** It was reverse-engineered by
+capturing the real web app, and DeepL can break it in any deploy. Three details
+are load-bearing and fail in confusing ways if they drift:
+
+- Omit the `SetPropertyOperation`s and the server answers `901_append_not_allowed`.
+- Send a stale `baseVersion` and it rejects the message as `Message validation failed`.
+- Read text off the source field instead of the target and you get the caller's
+  own input echoed straight back, which looks like a working rephrase that
+  never changes anything.
+
+`tests/lib/services/deeplWriteProtocol.test.ts` pins the byte layouts so a
+drift shows up as a failing test rather than a silent wrong answer. If the
+endpoint starts timing out or returning input unchanged, re-capture the app's
+traffic and compare frames — that is the intended debugging path.
+
+No API key, no quota, and no credential to leak; the tradeoff is that this is
+fragile by construction.

@@ -2,7 +2,8 @@
  * DeepLX
  */
 
-import { Hono } from "hono";
+import { Context, Hono } from "hono";
+import { ContentfulStatusCode } from "hono/utils/http-status";
 import {
   clearMemoryCache,
   generateCacheKey,
@@ -20,8 +21,11 @@ import {
   handleCORSPreflight,
   validateLanguageCode,
 } from "./lib/security";
+import { checkRateLimit } from "./lib/rateLimit";
+import { rephraseWithDeepL } from "./lib/services/deeplWrite";
 import { translateWithGoogle } from "./lib/services/googleTranslate";
-import { createStandardResponse } from "./lib/types";
+import { createStandardResponse, RephraseParams } from "./lib/types";
+import { validateRephraseRequest } from "./lib/validation";
 
 /**
  * Initialize Hono app with environment bindings
@@ -214,6 +218,95 @@ async function handleTranslation(c: any, provider: "deepl" | "google") {
 }
 
 /**
+ * Rephrase handler
+ *
+ * Deliberately not folded into handleTranslation: that path picks a provider,
+ * normalizes a source/target language pair and speaks one-shot JSON-RPC.
+ * Rephrase has one provider, no source language, and holds a stateful
+ * WebSocket session. Sharing the function would mean branching on provider in
+ * six places to reunite two unrelated protocols.
+ * @param c - Hono context
+ * @returns Rephrase response
+ */
+async function handleRephrase(c: Context<{ Bindings: Env }>) {
+  const unauthorized = rejectUnauthorized(c);
+  if (unauthorized) return unauthorized;
+
+  const env = c.env;
+  const clientIP = getSecureClientIP(c.req.raw) || "unknown";
+
+  try {
+    let body: unknown;
+    try {
+      body = await c.req.json();
+    } catch {
+      return c.json(createStandardResponse(400, null), 400);
+    }
+
+    const validation = validateRephraseRequest(body);
+    if (!validation.isValid || !validation.sanitizedInput) {
+      return c.json(createStandardResponse(400, null), 400);
+    }
+
+    const params: RephraseParams = validation.sanitizedInput;
+
+    // Only the client bucket applies: the proxy bucket models the shared free
+    // backend, and this request goes straight to DeepL on our own key.
+    if (!(await checkRateLimit(clientIP, env))) {
+      return c.json(createStandardResponse(429, null), 429);
+    }
+
+    const cacheKey = generateCacheKey(
+      params.text,
+      "rephrase",
+      params.target_lang || "auto",
+      "rephrase"
+    );
+    const cached = await getCachedTranslation(cacheKey, env);
+
+    if (cached) {
+      return c.json(
+        createStandardResponse(
+          200,
+          cached.data,
+          cached.id || Math.floor(Math.random() * 10000000000),
+          cached.source_lang,
+          cached.target_lang
+        )
+      );
+    }
+
+    const result = await rephraseWithDeepL(params, { env, clientIP });
+
+    if (result.code === 200 && result.data) {
+      await setCachedTranslation(
+        cacheKey,
+        {
+          data: result.data,
+          timestamp: Date.now(),
+          source_lang: result.source_lang || "AUTO",
+          target_lang: result.target_lang || "AUTO",
+          id: result.id,
+        },
+        env
+      );
+    }
+
+    return c.json(result, result.code as ContentfulStatusCode);
+  } catch (error) {
+    const errorResponse = createErrorResponse(error, {
+      endpoint: "/rephrase",
+      clientIP,
+    });
+
+    return c.json(
+      errorResponse.response,
+      errorResponse.httpStatus as ContentfulStatusCode
+    );
+  }
+}
+
+/**
  * API Route Definitions
  * Defines all available endpoints and their handlers
  */
@@ -224,6 +317,7 @@ app
   .get("/translate", (c) => c.text("Please use POST method :)"))
   .get("/deepl", (c) => c.text("Please use POST method :)"))
   .get("/google", (c) => c.text("Please use POST method :)"))
+  .get("/rephrase", (c) => c.text("Please use POST method :)"))
 
   /**
    * Debug endpoint for request format validation and troubleshooting
@@ -353,7 +447,14 @@ app
   })
 
   /**
+   * DeepL Write endpoint
+   * POST /rephrase - Improves text instead of translating it, using the same
+   * free backend as deepl.com/write. No API key.
+   */
+  .post("/rephrase", handleRephrase)
+
+  /**
    * Catch-all route for undefined paths
    * Redirects all other requests to the GitHub repository
    */
-  .all("*", (c) => c.redirect("https://github.com/xixu-me/DeepLX"));
+  .all("*", (c) => c.redirect("https://github.com/boredland/deeplx"));
