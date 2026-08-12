@@ -332,6 +332,82 @@ describe("Main App", () => {
     });
   });
 
+  describe("Optional API key authentication", () => {
+    const translationRequest = (headers: HeadersInit = {}) =>
+      new Request("http://localhost/translate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...headers },
+        body: JSON.stringify({
+          text: "Hello",
+          source_lang: "EN",
+          target_lang: "ZH",
+        }),
+      });
+
+    it("should not require a key when API_KEYS is unset", async () => {
+      const response = await app.fetch(translationRequest(), mockEnv);
+
+      expect(response.status).not.toBe(401);
+    });
+
+    it("should reject unauthenticated requests when API_KEYS is set", async () => {
+      const response = await app.fetch(translationRequest(), {
+        ...mockEnv,
+        API_KEYS: "secret",
+      });
+
+      expect(response.status).toBe(401);
+    });
+
+    it("should accept a valid key when API_KEYS is set", async () => {
+      const response = await app.fetch(
+        translationRequest({ Authorization: "Bearer secret" }),
+        { ...mockEnv, API_KEYS: "secret" }
+      );
+
+      expect(response.status).not.toBe(401);
+    });
+
+    it("should gate the debug endpoint", async () => {
+      const env = { ...mockEnv, API_KEYS: "secret", DEBUG_MODE: "true" };
+      const debugRequest = (headers: HeadersInit = {}) =>
+        new Request("http://localhost/debug", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...headers },
+          body: JSON.stringify({ text: "Hello", target_lang: "ZH" }),
+        });
+
+      expect((await app.fetch(debugRequest(), env)).status).toBe(401);
+      expect(
+        (await app.fetch(debugRequest({ "X-API-Key": "secret" }), env)).status
+      ).not.toBe(401);
+    });
+
+    it("should gate routes that do not go through the translation handler", async () => {
+      const request = new Request("http://localhost/translate", {
+        method: "GET",
+      });
+      const response = await app.fetch(request, {
+        ...mockEnv,
+        API_KEYS: "secret",
+      });
+
+      expect(response.status).toBe(401);
+    });
+
+    it("should still answer CORS preflight requests without a key", async () => {
+      const request = new Request("http://localhost/translate", {
+        method: "OPTIONS",
+      });
+      const response = await app.fetch(request, {
+        ...mockEnv,
+        API_KEYS: "secret",
+      });
+
+      expect(response.status).toBe(200);
+    });
+  });
+
   describe("Scheduled events", () => {
     it("should handle scheduled maintenance", async () => {
       const { clearMemoryCache } = require("../src/lib");

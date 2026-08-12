@@ -57,6 +57,7 @@ DeepLX has significant improvements in performance and stability compared to the
 
 ### Security Features
 
+- **Optional API Key Authentication**: Off by default, enabled by setting `API_KEYS`
 - **Input Validation**: Comprehensive parameter validation and text sanitization
 - **Rate Limiting**: Multi-dimensional rate limiting based on client IP and proxy endpoints
 - **CORS Support**: Flexible cross-origin resource sharing configuration
@@ -601,6 +602,7 @@ Used to verify request format and troubleshoot issues.
 |------|-------------|
 | 200 | Translation successful |
 | 400 | Request parameter error |
+| 401 | Missing or invalid API key (only when `API_KEYS` is set) |
 | 429 | Request rate too high |
 | 500 | Internal server error |
 | 503 | Service temporarily unavailable |
@@ -613,6 +615,39 @@ Used to verify request format and troubleshoot issues.
 |----------|-------------|---------|
 | `DEBUG_MODE` | Debug mode switch | `false` |
 | `PROXY_URLS` | Proxy endpoint list, comma-separated | None |
+| `API_KEYS` | Accepted API keys, comma-separated. Unset means no authentication | None |
+
+### Optional API Key Authentication
+
+By default DeepLX requires no authentication, and leaving `API_KEYS` unset keeps
+it that way. Setting it turns every endpoint into an authenticated one, which is
+useful for a self-deployed instance on a public domain: an open translation
+endpoint is an API that anyone can use, and their traffic is what gets your
+deployment rate-limited by the upstream provider.
+
+Store the keys as a secret rather than a plaintext var:
+
+```bash
+npx wrangler secret put API_KEYS
+```
+
+Clients may present the key either way:
+
+```bash
+curl -X POST https://your-domain.workers.dev/deepl \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"text": "Hello, world!", "source_lang": "EN", "target_lang": "ZH"}'
+
+curl -X POST https://your-domain.workers.dev/deepl \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"text": "Hello, world!", "source_lang": "EN", "target_lang": "ZH"}'
+```
+
+Multiple keys are accepted as a comma-separated list, so a single client can be
+revoked without rotating the keys of the others. Requests without a valid key
+receive HTTP 401.
 
 ### Performance Configuration
 

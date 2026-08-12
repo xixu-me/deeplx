@@ -11,6 +11,7 @@ import {
   setCachedTranslation,
 } from "./lib";
 
+import { rejectUnauthorized } from "./lib/apiKey";
 import { PAYLOAD_LIMITS } from "./lib/config";
 import { createErrorResponse } from "./lib/errorHandler";
 import { normalizeLanguageCode } from "./lib/query";
@@ -212,6 +213,15 @@ async function handleTranslation(c: any, provider: "deepl" | "google") {
  * Defines all available endpoints and their handlers
  */
 app
+  // Optional API key gate. Registered before every route so an endpoint added
+  // later cannot accidentally end up unauthenticated; a no-op unless API_KEYS
+  // is set.
+  .use("*", async (c, next) => {
+    const unauthorized = rejectUnauthorized(c);
+    if (unauthorized) return unauthorized;
+    await next();
+  })
+
   // Add CORS preflight handling for all routes
   .options("*", (c) => handleCORSPreflight(c))
 
