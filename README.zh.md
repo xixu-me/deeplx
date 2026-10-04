@@ -57,6 +57,7 @@ DeepLX 在性能和稳定性方面相较于 DeepL API 有显著提升，以下�
 
 ### 安全特性
 
+- **可选的 API 密钥身份验证**：默认关闭，设置 `API_KEYS` 后启用
 - **输入验证**：全面的参数校验和文本清理
 - **速率限制**：基于客户端 IP 和代理端点的多维度限流
 - **CORS 支持**：灵活的跨域资源共享配置
@@ -601,6 +602,7 @@ npx wrangler deploy
 |------|------|
 | 200 | 翻译成功 |
 | 400 | 请求参数错误 |
+| 401 | 缺少或无效的 API 密钥（仅在设置 `API_KEYS` 时） |
 | 429 | 请求频率过高 |
 | 500 | 服务器内部错误 |
 | 503 | 服务暂时不可用 |
@@ -613,6 +615,36 @@ npx wrangler deploy
 |--------|------|--------|
 | `DEBUG_MODE` | 调试模式开关 | `false` |
 | `PROXY_URLS` | 代理端点列表，逗号分隔 | 无 |
+| `API_KEYS` | 接受的 API 密钥，逗号分隔。未设置则不启用身份验证 | 无 |
+
+### 可选的 API 密钥身份验证
+
+DeepLX 默认不需要身份验证，不设置 `API_KEYS` 即保持这一行为。设置该变量后，
+所有端点都需要身份验证。这对部署在公开域名上的自建实例很有用：开放的翻译端点
+等同于任何人都能使用的 API，而这些流量正是导致你的部署被上游服务商限流的原因。
+
+请将密钥存储为 Secret，而不是明文变量：
+
+```bash
+npx wrangler secret put API_KEYS
+```
+
+客户端可以使用以下任一方式提供密钥：
+
+```bash
+curl -X POST https://your-domain.workers.dev/deepl \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"text": "Hello, world!", "source_lang": "EN", "target_lang": "ZH"}'
+
+curl -X POST https://your-domain.workers.dev/deepl \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"text": "Hello, world!", "source_lang": "EN", "target_lang": "ZH"}'
+```
+
+支持以逗号分隔的多个密钥，因此可以在不轮换其他客户端密钥的情况下吊销某个客户端。
+未提供有效密钥的请求将收到 HTTP 401。
 
 ### 性能配置
 
