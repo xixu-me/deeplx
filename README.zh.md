@@ -1,12 +1,12 @@
 <!-- renoise-banner -->
 <p align="center">
   <a href="https://renoise.ai/plugin?utm_medium=github&utm_source=xixu">
-    <img src="https://raw.githubusercontent.com/ArcoCodes/renoise-plugins-official/main/assets/icon.svg" alt="Renoise" width="96">
+    <img src="https://raw.githubusercontent.com/renoise-ai/renoise-plugins-official/main/assets/icon.svg" alt="Renoise" width="96">
   </a>
 </p>
 
 <p align="center">
-  <a href="https://renoise.ai/plugin?utm_medium=github&utm_source=xixu">Renoise MCP</a> · <a href="https://github.com/ArcoCodes/renoise-plugins-official">Renoise Skills &amp; CLI</a><br><br>
+  <a href="https://renoise.ai/plugin?utm_medium=github&utm_source=xixu">Renoise MCP</a> · <a href="https://github.com/renoise-ai/renoise-plugins-official">Renoise Skills &amp; CLI</a><br><br>
   <strong>用 DeepLX 本地化脚本，再生成多语言口播视频，不必手工重做每个镜头。</strong>
 </p>
 
