@@ -39,12 +39,7 @@
   "placement": {
     "mode": "smart"
   },
-  "routes": [
-    {
-      "pattern": "dplx.xi-xu.me",
-      "custom_domain": true
-    }
-  ],
+  "routes": [],
   "triggers": {
     "crons": ["*/5 * * * *"]
   },
