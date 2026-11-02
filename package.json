@@ -46,6 +46,8 @@
   "overrides": {
     "esbuild": "0.28.1",
     "sharp": "^0.35.4",
-    "js-yaml": "^4.3.2"
+    "js-yaml": "^4.3.2",
+    "minimatch": "^11.0.4",
+    "deepmerge": "4.1.2"
   }
 }
