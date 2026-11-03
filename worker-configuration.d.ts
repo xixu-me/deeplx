@@ -20,6 +20,12 @@ interface Env {
 
   /** Enables the /debug endpoint only when set to an explicit truthy value */
   DEBUG_MODE?: string;
+
+  /**
+   * Comma-separated list of accepted API keys, set as a secret (optional).
+   * Leaving this unset keeps the service open, which is the default behavior.
+   */
+  API_KEYS?: string;
 }
 
 /**
